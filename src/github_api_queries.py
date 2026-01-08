@@ -104,6 +104,10 @@ class GitHubApiQueries(object):
                     continue
                 if r_async.status == HTTPStatus.NO_CONTENT.value:
                     return list()
+                if r_async.content_length == 0 or (
+                    r_async.content_length is None and not r_async.content_type
+                ):
+                    return list()
 
                 result: dict[str, str | dict] = await r_async.json()
 
