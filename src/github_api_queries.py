@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from aiohttp.client_exceptions import ClientPayloadError
+from aiohttp.client_exceptions import ClientPayloadError, ContentTypeError
 from requests import post, get, models
 from asyncio import Semaphore, sleep
 from aiohttp import ClientSession
@@ -102,12 +102,18 @@ class GitHubApiQueries(object):
                     print(f"A path returned {HTTPStatus.ACCEPTED.value}. Retrying...")
                     await sleep(self.__ASYNCIO_SLEEP_TIME)
                     continue
+                if r_async.status == HTTPStatus.NO_CONTENT.value:
+                    return list()
+                if r_async.content_length == 0 or (
+                    r_async.content_length is None and not r_async.content_type
+                ):
+                    return list()
 
                 result: dict[str, str | dict] = await r_async.json()
 
                 if result is not None:
                     return result
-            except (ConnectionError, ClientPayloadError) as err:
+            except (ConnectionError, ClientPayloadError, ContentTypeError) as err:
                 print(
                     "aiohttp failed for REST query attempt #" + str(i + 1),
                     " msg:",
@@ -128,6 +134,8 @@ class GitHubApiQueries(object):
                         )
                         await sleep(self.__ASYNCIO_SLEEP_TIME)
                         continue
+                    elif r_requests.status_code == HTTPStatus.NO_CONTENT.value:
+                        return list()
                     elif r_requests.status_code == HTTPStatus.OK.value:
                         return r_requests.json()
 
